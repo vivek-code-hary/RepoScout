@@ -1,7 +1,7 @@
 package com.example.ashrut.reposcout.presentation.common
 
 import com.example.ashrut.reposcout.domain.model.Repository
-import com.example.ashrut.reposcout.domain.repository.GitHubRepository
+
 
 sealed interface UiState {
 
@@ -10,7 +10,8 @@ sealed interface UiState {
     data class Success(
         val repositories: List<Repository>,
         val isLoadingMore: Boolean = false,
-        val paginationError: String? = null
+        val paginationError: String? = null,
+        val isRefreshing: Boolean = false
     ) : UiState
 
     data class Error(

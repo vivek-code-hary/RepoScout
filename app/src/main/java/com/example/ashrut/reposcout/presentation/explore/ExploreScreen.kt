@@ -32,8 +32,10 @@ import com.example.ashrut.reposcout.domain.model.Repository
 import com.example.ashrut.reposcout.presentation.common.UiState
 import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.navigation.NavController
 import com.example.ashrut.reposcout.presentation.screen.Routes
+
 
 @Composable
 fun ExploreScreen(
@@ -41,9 +43,11 @@ fun ExploreScreen(
     navController: NavController
 ) {
 
-    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val uiState by viewModel.uiState
+        .collectAsStateWithLifecycle()
 
-    val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
+    val searchQuery by viewModel.searchQuery
+        .collectAsStateWithLifecycle()
 
     val listState = rememberLazyListState()
 
@@ -58,11 +62,13 @@ fun ExploreScreen(
             val totalItems =
                 listState.layoutInfo.totalItemsCount
 
-            lastVisibleItem >= totalItems - 3
+            totalItems > 0 &&
+                    lastVisibleItem >= totalItems - 3
         }
     }
 
     LaunchedEffect(shouldLoadMore) {
+
         if (shouldLoadMore) {
             viewModel.loadNextPage()
         }
@@ -85,10 +91,11 @@ fun ExploreScreen(
 
                 Box(
                     modifier = Modifier
-                        .fillMaxSize()
+                        .fillMaxWidth()
                         .weight(1f),
                     contentAlignment = Alignment.Center
                 ) {
+
                     CircularProgressIndicator()
                 }
             }
@@ -97,43 +104,68 @@ fun ExploreScreen(
 
                 if (state.repositories.isEmpty()) {
 
-                    EmptyContent()
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        EmptyContent()
+                    }
 
                 } else {
 
-                    RepositoryList(
-                        repositories = state.repositories,
-                        listState = listState,
-                        isLoadingMore = state.isLoadingMore,
-                        paginationError = state.paginationError,
-
-                        onRetryNextPage = {
-                            viewModel.retryNextPage()
+                    PullToRefreshBox(
+                        isRefreshing = state.isRefreshing,
+                        onRefresh = {
+                            viewModel.refreshRepositories()
                         },
-
-                        onRepositoryClick = { repository ->
-
-                            navController.navigate(
-                                Routes.Details.createRoute(
-                                    owner = repository.ownerName,
-                                    repo = repository.name
-                                )
-                            )
-                        },
-
                         modifier = Modifier.weight(1f)
-                    )
+                    ) {
+
+                        RepositoryList(
+                            repositories = state.repositories,
+                            listState = listState,
+                            isLoadingMore = state.isLoadingMore,
+                            paginationError = state.paginationError,
+
+                            onRetryNextPage = {
+                                viewModel.retryNextPage()
+                            },
+
+                            onRepositoryClick = { repository ->
+
+                                navController.navigate(
+                                    Routes.Details.createRoute(
+                                        owner = repository.ownerName,
+                                        repo = repository.name,
+                                        id = repository.id
+                                    )
+                                )
+                            },
+
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
                 }
             }
 
             is UiState.Error -> {
 
-                ErrorContent(
-                    message = state.message,
-                    onRetry = {
-                        viewModel.retrySearch()
-                    }
-                )
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f),
+                    contentAlignment = Alignment.Center
+                ) {
+
+                    ErrorContent(
+                        message = state.message,
+                        onRetry = {
+                            viewModel.retrySearch()
+                        }
+                    )
+                }
             }
         }
     }
@@ -194,13 +226,13 @@ fun RepositoryList(
 
     LazyColumn(
         state = listState,
-        modifier = Modifier
-            .fillMaxWidth(),
+        modifier = modifier,
         contentPadding = PaddingValues(
             top = 8.dp,
             bottom = 16.dp
         ),
-        verticalArrangement = Arrangement.spacedBy(4.dp)
+        verticalArrangement =
+            Arrangement.spacedBy(4.dp)
     ) {
 
         items(

@@ -42,9 +42,11 @@ import com.example.ashrut.reposcout.utils.formatGitHubDate
 @Composable
 fun RepositoryDetailsScreen(
     repository: Repository,
+    isSaved: Boolean,
+    isSaving: Boolean,
     onBack: () -> Unit,
     onOpenGitHub: () -> Unit,
-    onSave: () -> Unit
+    onSaveClick: () -> Unit
 ) {
 
     Scaffold(
@@ -187,11 +189,28 @@ fun RepositoryDetailsScreen(
             item {
 
                 OutlinedButton(
-                    onClick = onSave,
+                    onClick = onSaveClick,
+                    enabled = !isSaving,
                     modifier = Modifier.fillMaxWidth()
                 ) {
 
-                    Text("Save Repository")
+                    if (isSaving) {
+
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(20.dp),
+                            strokeWidth = 2.dp
+                        )
+
+                    } else {
+
+                        Text(
+                            text = if (isSaved) {
+                                "Remove from Saved"
+                            } else {
+                                "Save Repository"
+                            }
+                        )
+                    }
                 }
             }
         }

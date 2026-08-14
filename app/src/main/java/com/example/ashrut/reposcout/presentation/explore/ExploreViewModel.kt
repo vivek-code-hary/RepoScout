@@ -13,6 +13,8 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 
+
+
 class ExploreViewModel(
     private val repository: GitHubRepository
 ) : ViewModel() {
@@ -21,6 +23,12 @@ class ExploreViewModel(
         private const val DEFAULT_QUERY = "android"
         private const val PAGE_SIZE = 20
     }
+
+    private val _isRefreshing =
+        MutableStateFlow(false)
+
+    val isRefreshing =
+        _isRefreshing.asStateFlow()
 
     private val _uiState =
         MutableStateFlow<UiState>(UiState.Loading)
@@ -62,6 +70,7 @@ class ExploreViewModel(
                         currentQuery = ""
                         currentPage = 1
                         hasMorePages = false
+                        isLoadingMore = false
 
                         _uiState.value =
                             UiState.Success(
@@ -78,12 +87,14 @@ class ExploreViewModel(
         }
     }
 
-    fun onSearchQueryChanged(query: String) {
-
+    fun onSearchQueryChanged(
+        query: String
+    ) {
         _searchQuery.value = query
     }
 
-    private fun searchRepositories(
+
+    private suspend fun searchRepositories(
         query: String
     ) {
 
@@ -92,36 +103,35 @@ class ExploreViewModel(
         hasMorePages = true
         isLoadingMore = false
 
-        viewModelScope.launch {
+        _uiState.value =
+            UiState.Loading
 
-            _uiState.value = UiState.Loading
-
-            when (
-                val result = repository.searchRepositories(
+        when (
+            val result =
+                repository.searchRepositories(
                     query = query,
                     page = currentPage,
                     perPage = PAGE_SIZE
                 )
-            ) {
+        ) {
 
-                is Result.Success -> {
+            is Result.Success -> {
 
-                    hasMorePages =
-                        result.data.size == PAGE_SIZE
+                hasMorePages =
+                    result.data.size == PAGE_SIZE
 
-                    _uiState.value =
-                        UiState.Success(
-                            repositories = result.data
-                        )
-                }
+                _uiState.value =
+                    UiState.Success(
+                        repositories = result.data
+                    )
+            }
 
-                is Result.Error -> {
+            is Result.Error -> {
 
-                    _uiState.value =
-                        UiState.Error(
-                            result.message
-                        )
-                }
+                _uiState.value =
+                    UiState.Error(
+                        result.message
+                    )
             }
         }
     }
@@ -150,20 +160,23 @@ class ExploreViewModel(
 
         viewModelScope.launch {
 
-            val nextPage = currentPage + 1
+            val nextPage =
+                currentPage + 1
 
             when (
-                val result = repository.searchRepositories(
-                    query = currentQuery,
-                    page = nextPage,
-                    perPage = PAGE_SIZE
-                )
+                val result =
+                    repository.searchRepositories(
+                        query = currentQuery,
+                        page = nextPage,
+                        perPage = PAGE_SIZE
+                    )
             ) {
 
                 is Result.Success -> {
 
                     val newRepositories =
-                        currentState.repositories + result.data
+                        currentState.repositories +
+                                result.data
 
                     currentPage = nextPage
 
@@ -172,7 +185,8 @@ class ExploreViewModel(
 
                     _uiState.value =
                         UiState.Success(
-                            repositories = newRepositories,
+                            repositories =
+                                newRepositories,
                             isLoadingMore = false,
                             paginationError = null
                         )
@@ -183,7 +197,8 @@ class ExploreViewModel(
                     _uiState.value =
                         currentState.copy(
                             isLoadingMore = false,
-                            paginationError = result.message
+                            paginationError =
+                                result.message
                         )
                 }
             }
@@ -197,8 +212,74 @@ class ExploreViewModel(
     }
 
     fun retrySearch() {
-        searchRepositories(
-            query = currentQuery
-        )
+
+        viewModelScope.launch {
+
+            searchRepositories(
+                query = currentQuery
+            )
+        }
+    }
+
+
+    fun refreshRepositories() {
+
+        if (isLoadingMore) {
+            return
+        }
+
+        val currentState =
+            _uiState.value as? UiState.Success
+                ?: return
+
+        val query =
+            currentQuery.trim()
+
+        if (query.isBlank()) {
+            return
+        }
+
+        viewModelScope.launch {
+
+            _uiState.value =
+                currentState.copy(
+                    isRefreshing = true
+                )
+
+            when (
+                val result =
+                    repository.searchRepositories(
+                        query = query,
+                        page = 1,
+                        perPage = PAGE_SIZE
+                    )
+            ) {
+
+                is Result.Success -> {
+
+                    currentPage = 1
+
+                    hasMorePages =
+                        result.data.size == PAGE_SIZE
+
+                    _uiState.value =
+                        UiState.Success(
+                            repositories = result.data,
+                            isLoadingMore = false,
+                            paginationError = null,
+                            isRefreshing = false
+                        )
+                }
+
+                is Result.Error -> {
+
+                    _uiState.value =
+                        currentState.copy(
+                            isRefreshing = false,
+                            paginationError = result.message
+                        )
+                }
+            }
+        }
     }
 }

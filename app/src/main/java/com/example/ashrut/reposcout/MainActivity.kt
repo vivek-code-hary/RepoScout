@@ -17,12 +17,16 @@ import com.example.ashrut.reposcout.presentation.explore.ExploreScreen
 import com.example.ashrut.reposcout.presentation.explore.ExploreViewModel
 import com.example.ashrut.reposcout.presentation.explore.ExploreViewModelFactory
 import com.example.ashrut.reposcout.presentation.screen.AppNavHost
+import com.example.ashrut.reposcout.presentation.screen.AppScaffold
 import com.example.ashrut.reposcout.ui.theme.RepoScoutTheme
 import com.example.ashrut.reposcout.utils.AppContainer
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        AppContainer.initialize(applicationContext)
+
         enableEdgeToEdge()
         setContent {
 
@@ -39,7 +43,7 @@ class MainActivity : ComponentActivity() {
 
             RepoScoutTheme {
 
-                AppNavHost(
+                AppScaffold(
                     navController = navController,
                     exploreViewModel = exploreViewModel,
                     repository = AppContainer.gitHubRepository
