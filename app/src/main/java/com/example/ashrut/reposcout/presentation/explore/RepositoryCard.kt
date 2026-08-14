@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -18,6 +19,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.example.ashrut.reposcout.domain.model.Repository
@@ -35,7 +37,8 @@ fun RepositoryCard(
             .padding(
                 horizontal = 16.dp,
                 vertical = 6.dp
-            )
+            ),
+        shape = RoundedCornerShape(12.dp)
     ) {
 
         Row(
@@ -45,7 +48,7 @@ fun RepositoryCard(
             verticalAlignment = Alignment.Top
         ) {
 
-            // Owner Avatar
+            // Repository owner avatar
             AsyncImage(
                 model = repository.avatarUrl,
                 contentDescription = "${repository.ownerName} avatar",
@@ -58,50 +61,49 @@ fun RepositoryCard(
                 modifier = Modifier.width(12.dp)
             )
 
-            // Repository Information
+            // Repository information
             Column(
                 modifier = Modifier.weight(1f)
             ) {
 
-                // Repository Name
                 Text(
                     text = repository.name,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
-                    maxLines = 1
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
 
                 Spacer(
-                    modifier = Modifier.height(2.dp)
+                    modifier = Modifier.height(4.dp)
                 )
 
-                // Owner / Full Name
                 Text(
                     text = repository.fullName,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1
+                    style = MaterialTheme.typography.bodyMedium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
 
                 Spacer(
-                    modifier = Modifier.height(8.dp)
+                    modifier = Modifier.height(6.dp)
                 )
 
-                // Description
                 Text(
                     text = repository.description
                         ?: "No description provided",
-                    style = MaterialTheme.typography.bodyMedium,
-                    maxLines = 2
+                    style = MaterialTheme.typography.bodySmall,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
                 )
 
                 Spacer(
-                    modifier = Modifier.height(12.dp)
+                    modifier = Modifier.height(10.dp)
                 )
 
-                // Stats
                 Row(
-                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
 
                     Text(
@@ -116,7 +118,8 @@ fun RepositoryCard(
 
                     Text(
                         text = repository.language ?: "Unknown",
-                        style = MaterialTheme.typography.bodySmall
+                        style = MaterialTheme.typography.bodySmall,
+                        maxLines = 1
                     )
                 }
 
@@ -124,7 +127,6 @@ fun RepositoryCard(
                     modifier = Modifier.height(8.dp)
                 )
 
-                // License
                 Text(
                     text = "License: ${
                         repository.license ?: "Not specified"
@@ -137,12 +139,10 @@ fun RepositoryCard(
                     modifier = Modifier.height(4.dp)
                 )
 
-                // Updated Date
                 Text(
                     text = "Updated: ${formatGitHubDate(repository.updatedAt)}",
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }

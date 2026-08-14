@@ -72,4 +72,29 @@ class GitHubRepositoryImpl(
             )
         }
     }
+
+    override suspend fun getRepositoryDetails(
+        owner: String,
+        repo: String
+    ): Result<Repository> {
+
+        return try {
+
+            val response = api.getRepositoryDetails(
+                owner = owner,
+                repo = repo
+            )
+
+            Result.Success(
+                response.toDomain()
+            )
+
+        } catch (e: Exception) {
+
+            Result.Error(
+                e.message ?: "Something went wrong"
+            )
+        }
+    }
+
 }

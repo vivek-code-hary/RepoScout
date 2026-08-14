@@ -12,9 +12,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.compose.rememberNavController
 import com.example.ashrut.reposcout.presentation.explore.ExploreScreen
 import com.example.ashrut.reposcout.presentation.explore.ExploreViewModel
 import com.example.ashrut.reposcout.presentation.explore.ExploreViewModelFactory
+import com.example.ashrut.reposcout.presentation.screen.AppNavHost
 import com.example.ashrut.reposcout.ui.theme.RepoScoutTheme
 import com.example.ashrut.reposcout.utils.AppContainer
 
@@ -23,12 +25,25 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            val factory = ExploreViewModelFactory(
+
+            val navController = rememberNavController()
+
+            val exploreFactory = ExploreViewModelFactory(
                 repository = AppContainer.gitHubRepository
             )
-            val viewModel: ExploreViewModel = viewModel(factory = factory)
+
+            val exploreViewModel: ExploreViewModel =
+                viewModel(
+                    factory = exploreFactory
+                )
+
             RepoScoutTheme {
-                ExploreScreen(viewModel = viewModel)
+
+                AppNavHost(
+                    navController = navController,
+                    exploreViewModel = exploreViewModel,
+                    repository = AppContainer.gitHubRepository
+                )
             }
         }
     }

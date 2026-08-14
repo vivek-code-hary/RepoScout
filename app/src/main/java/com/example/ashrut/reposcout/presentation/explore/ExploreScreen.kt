@@ -3,6 +3,7 @@ package com.example.ashrut.reposcout.presentation.explore
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -12,6 +13,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -27,12 +30,20 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.ashrut.reposcout.domain.model.Repository
 import com.example.ashrut.reposcout.presentation.common.UiState
+import androidx.compose.material3.Icon
+import androidx.compose.material3.OutlinedTextField
+import androidx.navigation.NavController
+import com.example.ashrut.reposcout.presentation.screen.Routes
 
 @Composable
 fun ExploreScreen(
-    viewModel: ExploreViewModel
-){
+    viewModel: ExploreViewModel,
+    navController: NavController
+) {
+
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+
+    val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
 
     val listState = rememberLazyListState()
 
@@ -52,46 +63,110 @@ fun ExploreScreen(
     }
 
     LaunchedEffect(shouldLoadMore) {
-
         if (shouldLoadMore) {
             viewModel.loadNextPage()
         }
     }
 
-    when(val state = uiState){
-        UiState.Loading -> {
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ){
-                CircularProgressIndicator()
+    Column(
+        modifier = Modifier.fillMaxSize()
+    ) {
+
+        RepositorySearchBar(
+            query = searchQuery,
+            onQueryChange = { query ->
+                viewModel.onSearchQueryChanged(query)
             }
-        }
-        is UiState.Success -> {
-            if (state.repositories.isEmpty()) {
-                EmptyContent()
-            } else {
-                RepositoryList(
-                    repositories = state.repositories,
-                    listState = listState,
-                    isLoadingMore = state.isLoadingMore,
-                    paginationError = state.paginationError,
-                    onRetryNextPage = {
-                        viewModel.retryNextPage()
+        )
+
+        when (val state = uiState) {
+
+            UiState.Loading -> {
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .weight(1f),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator()
+                }
+            }
+
+            is UiState.Success -> {
+
+                if (state.repositories.isEmpty()) {
+
+                    EmptyContent()
+
+                } else {
+
+                    RepositoryList(
+                        repositories = state.repositories,
+                        listState = listState,
+                        isLoadingMore = state.isLoadingMore,
+                        paginationError = state.paginationError,
+
+                        onRetryNextPage = {
+                            viewModel.retryNextPage()
+                        },
+
+                        onRepositoryClick = { repository ->
+
+                            navController.navigate(
+                                Routes.Details.createRoute(
+                                    owner = repository.ownerName,
+                                    repo = repository.name
+                                )
+                            )
+                        },
+
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+            }
+
+            is UiState.Error -> {
+
+                ErrorContent(
+                    message = state.message,
+                    onRetry = {
+                        viewModel.retrySearch()
                     }
                 )
             }
         }
-
-        is UiState.Error -> {
-            ErrorContent(
-                message = state.message,
-                onRetry = {
-                    viewModel.loadRepositories()
-                }
-            )
-        }
     }
+}
+
+
+
+
+@Composable
+fun RepositorySearchBar(
+    query: String,
+    onQueryChange: (String) -> Unit
+) {
+    OutlinedTextField(
+        value = query,
+        onValueChange = onQueryChange,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(
+                horizontal = 16.dp,
+                vertical = 12.dp
+            ),
+        placeholder = {
+            Text("Search repositories")
+        },
+        leadingIcon = {
+            Icon(
+                imageVector = Icons.Default.Search,
+                contentDescription = "Search"
+            )
+        },
+        singleLine = true
+    )
 }
 
 @Composable
@@ -112,12 +187,20 @@ fun RepositoryList(
     listState: LazyListState,
     isLoadingMore: Boolean,
     paginationError: String?,
-    onRetryNextPage: () -> Unit
+    onRetryNextPage: () -> Unit,
+    onRepositoryClick: (Repository) -> Unit,
+    modifier: Modifier = Modifier
 ) {
 
     LazyColumn(
         state = listState,
-        modifier = Modifier.fillMaxSize()
+        modifier = Modifier
+            .fillMaxWidth(),
+        contentPadding = PaddingValues(
+            top = 8.dp,
+            bottom = 16.dp
+        ),
+        verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
 
         items(
@@ -128,7 +211,7 @@ fun RepositoryList(
             RepositoryCard(
                 repository = repository,
                 onClick = {
-                    // Details later
+                    onRepositoryClick(repository)
                 }
             )
         }

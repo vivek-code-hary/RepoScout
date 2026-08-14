@@ -10,4 +10,10 @@ interface GitHubRepository {
         page: Int,
         perPage: Int
     ): Result<List<Repository>>
+
+
+    suspend fun getRepositoryDetails(
+        owner: String,
+        repo: String
+    ): Result<Repository>
 }

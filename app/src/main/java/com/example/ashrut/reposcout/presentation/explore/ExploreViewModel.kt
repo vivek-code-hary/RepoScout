@@ -8,14 +8,17 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import com.example.ashrut.reposcout.utils.Result
-
+import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.distinctUntilChanged
 
 class ExploreViewModel(
     private val repository: GitHubRepository
 ) : ViewModel() {
 
     companion object {
-        private const val SEARCH_QUERY = "android"
+        private const val DEFAULT_QUERY = "android"
         private const val PAGE_SIZE = 20
     }
 
@@ -24,6 +27,14 @@ class ExploreViewModel(
 
     val uiState = _uiState.asStateFlow()
 
+    private val _searchQuery =
+        MutableStateFlow(DEFAULT_QUERY)
+
+    val searchQuery =
+        _searchQuery.asStateFlow()
+
+    private var currentQuery = DEFAULT_QUERY
+
     private var currentPage = 1
 
     private var isLoadingMore = false
@@ -31,32 +42,72 @@ class ExploreViewModel(
     private var hasMorePages = true
 
     init {
-        loadRepositories()
+        observeSearchQuery()
     }
 
-    fun loadRepositories() {
+    @OptIn(FlowPreview::class)
+    private fun observeSearchQuery() {
 
+        viewModelScope.launch {
 
-        if (_uiState.value is UiState.Success) {
-            return
+            _searchQuery
+                .debounce(500)
+                .distinctUntilChanged()
+                .collectLatest { query ->
+
+                    val cleanQuery = query.trim()
+
+                    if (cleanQuery.isBlank()) {
+
+                        currentQuery = ""
+                        currentPage = 1
+                        hasMorePages = false
+
+                        _uiState.value =
+                            UiState.Success(
+                                repositories = emptyList()
+                            )
+
+                        return@collectLatest
+                    }
+
+                    searchRepositories(
+                        query = cleanQuery
+                    )
+                }
         }
+    }
+
+    fun onSearchQueryChanged(query: String) {
+
+        _searchQuery.value = query
+    }
+
+    private fun searchRepositories(
+        query: String
+    ) {
+
+        currentQuery = query
+        currentPage = 1
+        hasMorePages = true
+        isLoadingMore = false
 
         viewModelScope.launch {
 
             _uiState.value = UiState.Loading
 
-            currentPage = 1
-            hasMorePages = true
-
             when (
                 val result = repository.searchRepositories(
-                    query = SEARCH_QUERY,
+                    query = query,
                     page = currentPage,
                     perPage = PAGE_SIZE
                 )
             ) {
 
                 is Result.Success -> {
+
+                    hasMorePages =
+                        result.data.size == PAGE_SIZE
 
                     _uiState.value =
                         UiState.Success(
@@ -85,12 +136,17 @@ class ExploreViewModel(
             _uiState.value as? UiState.Success
                 ?: return
 
+        if (currentQuery.isBlank()) {
+            return
+        }
+
         isLoadingMore = true
 
-        _uiState.value = currentState.copy(
-            isLoadingMore = true,
-            paginationError = null
-        )
+        _uiState.value =
+            currentState.copy(
+                isLoadingMore = true,
+                paginationError = null
+            )
 
         viewModelScope.launch {
 
@@ -98,7 +154,7 @@ class ExploreViewModel(
 
             when (
                 val result = repository.searchRepositories(
-                    query = SEARCH_QUERY,
+                    query = currentQuery,
                     page = nextPage,
                     perPage = PAGE_SIZE
                 )
@@ -111,31 +167,38 @@ class ExploreViewModel(
 
                     currentPage = nextPage
 
-                    // Agar 20 se kam result aaye,
-                    // iska matlab next page available nahi hai.
                     hasMorePages =
                         result.data.size == PAGE_SIZE
 
-                    _uiState.value = UiState.Success(
-                        repositories = newRepositories,
-                        isLoadingMore = false,
-                        paginationError = null
-                    )
+                    _uiState.value =
+                        UiState.Success(
+                            repositories = newRepositories,
+                            isLoadingMore = false,
+                            paginationError = null
+                        )
                 }
 
                 is Result.Error -> {
 
-                    _uiState.value = currentState.copy(
-                        isLoadingMore = false,
-                        paginationError = result.message
-                    )
+                    _uiState.value =
+                        currentState.copy(
+                            isLoadingMore = false,
+                            paginationError = result.message
+                        )
                 }
             }
 
             isLoadingMore = false
         }
     }
+
     fun retryNextPage() {
         loadNextPage()
+    }
+
+    fun retrySearch() {
+        searchRepositories(
+            query = currentQuery
+        )
     }
 }
